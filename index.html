@@ -2,61 +2,107 @@
 <html lang="zh">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>流光泡泡机</title>
 
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+*{ margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+    --machine-grad: linear-gradient(145deg,#ff9ec0,#ff6f91);
+    --machine-shadow: 0 10px 30px rgba(255,120,170,.35);
+    --machine-accent:#fff;
 }
 
 body{
     overflow:hidden;
     width:100vw;
     height:100vh;
-    background: linear-gradient(to bottom,#dff3ff,#fef6ff);
+    background: linear-gradient(to bottom,#dff3ff,#fef6ff 55%,#fff8fb);
     font-family:sans-serif;
     touch-action:manipulation;
 }
 
 .title{
     text-align:center;
-    padding-top:25px;
+    padding-top:22px;
     font-size:24px;
     color:#5b7db8;
     font-weight:bold;
 }
 
-.machine{
+.controls{
     position:fixed;
-    bottom:60px;
+    top:62px;
     left:50%;
     transform:translateX(-50%);
-    width:180px;
-    height:110px;
-    border-radius:30px;
-    background: linear-gradient(145deg,#ff8db1,#ff6f91);
+    display:flex;
+    gap:8px;
+    padding:8px 10px;
+    border-radius:16px;
+    background:rgba(255,255,255,.62);
+    backdrop-filter:blur(8px);
+    box-shadow:0 8px 24px rgba(94,116,154,.16);
+}
+
+.skin-btn{
+    border:none;
+    border-radius:999px;
+    padding:7px 12px;
+    font-size:12px;
+    color:#496298;
+    background:rgba(255,255,255,.85);
+    box-shadow:0 2px 8px rgba(83,105,143,.16);
+}
+
+.skin-btn.active{
+    background:rgba(97,127,193,.9);
+    color:#fff;
+}
+
+.machine{
+    position:fixed;
+    bottom:56px;
+    left:50%;
+    transform:translateX(-50%);
+    width:188px;
+    height:114px;
+    border-radius:32px;
+    background:var(--machine-grad);
+    border:1px solid rgba(255,255,255,.4);
     display:flex;
     align-items:center;
     justify-content:center;
     color:white;
     font-size:18px;
-    box-shadow: 0 10px 30px rgba(255,120,170,.35);
+    letter-spacing:.5px;
+    box-shadow:var(--machine-shadow);
     user-select:none;
+    transition:filter .25s ease;
+}
+
+.machine::after{
+    content:"";
+    position:absolute;
+    inset:7px;
+    border-radius:26px;
+    border:1px solid rgba(255,255,255,.35);
+    pointer-events:none;
 }
 
 .nozzle{
     position:absolute;
-    top:-15px;
+    top:-18px;
     left:50%;
     transform:translateX(-50%);
-    width:36px;
-    height:25px;
-    background:#fff;
-    border-radius:10px;
+    width:40px;
+    height:28px;
+    background:var(--machine-accent);
+    border-radius:12px;
+    box-shadow:inset 0 3px 5px rgba(255,255,255,.45), 0 2px 8px rgba(79,101,146,.22);
 }
+
+.machine.is-active{ filter:brightness(1.07) saturate(1.04); }
 
 .bubble{
     position:fixed;
@@ -65,11 +111,12 @@ body{
     cursor:pointer;
     background:
       radial-gradient(circle at 28% 26%, rgba(255,255,255,.98), rgba(255,255,255,.75) 14%, transparent 35%),
-      radial-gradient(circle at 50% 55%, hsla(var(--hue),92%,72%,.45), hsla(var(--hue),95%,66%,.2) 60%, rgba(255,255,255,.06) 80%);
+      radial-gradient(circle at 50% 55%, hsla(var(--hue),90%,74%,.44), hsla(var(--hue),95%,68%,.18) 60%, rgba(255,255,255,.04) 80%);
     box-shadow: inset -8px -12px 16px rgba(255,255,255,.14), inset 8px 8px 14px rgba(255,255,255,.28);
     backdrop-filter:blur(1px);
-    animation:floatUp linear forwards;
+    animation:floatDrift linear forwards;
     will-change:transform,opacity;
+    transform:translate3d(0,0,0);
 }
 
 .particle{
@@ -80,12 +127,16 @@ body{
     pointer-events:none;
     background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.95), hsla(var(--hue),95%,72%,.7));
     animation: splash .45s ease-out forwards;
+    will-change:transform,opacity;
+    transform:translate3d(0,0,0);
 }
 
-@keyframes floatUp{
-    0%{ transform: translate(0,0) scale(0.7); opacity:0; }
-    10%{ opacity:1; }
-    100%{ transform: translate(var(--x),-110vh) scale(var(--scale-end)); opacity:0; }
+@keyframes floatDrift{
+    0%{ transform: translate3d(0,0,0) scale(.72); opacity:0; }
+    8%{ opacity:1; }
+    40%{ transform: translate3d(calc(var(--x) * .36 + var(--drift-a)), calc(var(--rise) * .38), 0) scale(calc(var(--scale-end) * .95)); }
+    67%{ transform: translate3d(calc(var(--x) * .72 + var(--drift-b)), calc(var(--rise) * .7), 0) scale(calc(var(--scale-end) * 1.03)); }
+    100%{ transform: translate3d(calc(var(--x) + var(--drift-c)), var(--rise), 0) scale(var(--scale-end)); opacity:0; }
 }
 
 @keyframes pop{
@@ -95,18 +146,22 @@ body{
 }
 
 @keyframes splash{
-    to{
-        transform: translate(var(--tx), var(--ty)) scale(0.2);
-        opacity:0;
-    }
+    to{ transform: translate3d(var(--tx), var(--ty), 0) scale(0.2); opacity:0; }
 }
 
+@media (max-width:600px){
+    .title{ font-size:21px; padding-top:18px; }
+    .machine{ width:174px; height:106px; bottom:48px; font-size:16px; }
+    .controls{ top:56px; transform:translateX(-50%) scale(.96); transform-origin:top center; }
+}
 </style>
 </head>
 
 <body>
 
 <div class="title">阳光流光泡泡机 🫧</div>
+
+<div class="controls" id="skinControls"></div>
 
 <div class="machine" id="machine">
     长按连续喷泡泡
@@ -115,11 +170,59 @@ body{
 
 <script>
 const machine = document.getElementById("machine");
+const skinControls = document.getElementById("skinControls");
+
+const skins = [
+    {
+        name:"粉嫩玩具",
+        grad:"linear-gradient(145deg,#ff9ec0,#ff6f91)",
+        shadow:"0 10px 30px rgba(255,120,170,.35)",
+        accent:"#fff"
+    },
+    {
+        name:"科幻霓光",
+        grad:"linear-gradient(145deg,#4f6dff,#7d4cff 55%,#41d9ff)",
+        shadow:"0 10px 34px rgba(84,103,255,.4)",
+        accent:"#cbf9ff"
+    },
+    {
+        name:"云朵梦境",
+        grad:"linear-gradient(145deg,#c8d8ff,#e0cbff 48%,#ffd9ef)",
+        shadow:"0 10px 30px rgba(148,155,232,.35)",
+        accent:"#ffffff"
+    }
+];
 
 let hueSeed = 180;
-let autoIntervalMs = 500;
+let autoIntervalMs = 580;
 let holdTimer = null;
 let audioCtx = null;
+let blowerNodes = null;
+let isHolding = false;
+let swarmBias = 0;
+
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function setSkin(index){
+    const skin = skins[index] || skins[0];
+    document.documentElement.style.setProperty("--machine-grad", skin.grad);
+    document.documentElement.style.setProperty("--machine-shadow", skin.shadow);
+    document.documentElement.style.setProperty("--machine-accent", skin.accent);
+
+    [...skinControls.children].forEach((btn, i)=>{
+        btn.classList.toggle("active", i===index);
+    });
+}
+
+function renderSkins(){
+    skins.forEach((skin, i)=>{
+        const btn = document.createElement("button");
+        btn.className = "skin-btn" + (i===0 ? " active" : "");
+        btn.textContent = skin.name;
+        btn.addEventListener("click", ()=>setSkin(i));
+        skinControls.appendChild(btn);
+    });
+}
 
 function ensureAudioContext(){
     if(!audioCtx){
@@ -127,37 +230,72 @@ function ensureAudioContext(){
         if(!ACtx) return null;
         audioCtx = new ACtx();
     }
-    if(audioCtx.state === "suspended"){
-        audioCtx.resume().catch(()=>{});
-    }
+    if(audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
     return audioCtx;
 }
 
-function toneBeep({freq=480, type="sine", attack=0.005, decay=0.08, gain=.12} = {}){
+function createBlowerSound(){
     const ctx = ensureAudioContext();
-    if(!ctx) return;
-    const now = ctx.currentTime;
+    if(!ctx || blowerNodes) return;
 
-    const osc = ctx.createOscillator();
+    const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 1.2, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = (Math.random()*2 - 1) * .65;
+
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuffer;
+    noiseSrc.loop = true;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 560;
+    bp.Q.value = 0.9;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1800;
+
+    const wobble = ctx.createOscillator();
+    wobble.type = "sine";
+    wobble.frequency.value = 0.18;
+
+    const wobbleGain = ctx.createGain();
+    wobbleGain.gain.value = 70;
+
     const amp = ctx.createGain();
+    amp.gain.value = 0.0001;
 
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, now);
+    wobble.connect(wobbleGain).connect(bp.frequency);
+    noiseSrc.connect(bp).connect(lp).connect(amp).connect(ctx.destination);
 
-    amp.gain.setValueAtTime(0.0001, now);
-    amp.gain.exponentialRampToValueAtTime(gain, now + attack);
-    amp.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
+    noiseSrc.start();
+    wobble.start();
 
-    osc.connect(amp).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + attack + decay + 0.02);
+    blowerNodes = {noiseSrc, wobble, amp};
+}
+
+function startBlowerLoop(){
+    createBlowerSound();
+    if(!audioCtx || !blowerNodes) return;
+    const now = audioCtx.currentTime;
+    blowerNodes.amp.gain.cancelScheduledValues(now);
+    blowerNodes.amp.gain.setValueAtTime(Math.max(0.0001, blowerNodes.amp.gain.value), now);
+    blowerNodes.amp.gain.exponentialRampToValueAtTime(0.055, now + 0.18);
+}
+
+function stopBlowerLoop(){
+    if(!audioCtx || !blowerNodes) return;
+    const now = audioCtx.currentTime;
+    blowerNodes.amp.gain.cancelScheduledValues(now);
+    blowerNodes.amp.gain.setValueAtTime(Math.max(0.0001, blowerNodes.amp.gain.value), now);
+    blowerNodes.amp.gain.exponentialRampToValueAtTime(0.0001, now + 0.26);
 }
 
 function noisePop(){
     const ctx = ensureAudioContext();
     if(!ctx) return;
 
-    const dur = 0.12;
+    const dur = 0.11;
     const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for(let i=0;i<data.length;i++) data[i] = Math.random()*2 - 1;
@@ -167,16 +305,16 @@ function noisePop(){
 
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.frequency.value = 800;
+    hp.frequency.value = 820;
 
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.frequency.value = 4200;
+    lp.frequency.value = 3800;
 
     const amp = ctx.createGain();
     const now = ctx.currentTime;
     amp.gain.setValueAtTime(0.0001, now);
-    amp.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+    amp.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
     amp.gain.exponentialRampToValueAtTime(0.0001, now + dur);
 
     noise.connect(hp).connect(lp).connect(amp).connect(ctx.destination);
@@ -185,7 +323,7 @@ function noisePop(){
 }
 
 function createSplash(x, y, hue){
-    for(let i=0;i<10;i++){
+    for(let i=0;i<9;i++){
         const p = document.createElement("div");
         p.className = "particle";
         p.style.left = `${x}px`;
@@ -193,7 +331,7 @@ function createSplash(x, y, hue){
         p.style.setProperty("--hue", hue);
 
         const angle = Math.random() * Math.PI * 2;
-        const distance = Math.random() * 40 + 18;
+        const distance = Math.random() * 36 + 14;
         p.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
         p.style.setProperty("--ty", `${Math.sin(angle) * distance}px`);
 
@@ -220,25 +358,37 @@ function popBubble(bubble){
 
 function createBubble(){
     const bubble = document.createElement("div");
-    const size = Math.random()*44 + 12;
+    const size = Math.random()*40 + 14;
 
     bubble.className = "bubble";
     bubble.style.width = size + "px";
     bubble.style.height = size + "px";
 
-    hueSeed = (hueSeed + 7 + Math.random() * 10) % 360;
+    hueSeed = (hueSeed + 6 + Math.random() * 8) % 360;
     bubble.style.setProperty("--hue", Math.round(hueSeed));
 
     const startX = window.innerWidth / 2;
-    bubble.style.left = (startX + (Math.random()*90 - 45)) + "px";
+    bubble.style.left = (startX + (Math.random()*84 - 42)) + "px";
     bubble.style.bottom = "145px";
 
-    bubble.style.setProperty("--x", (Math.random()*240 - 120) + "px");
+    swarmBias += (Math.random() - 0.5) * 18;
+    swarmBias *= 0.82;
+    const swarmSpread = (Math.random()*120 - 60) + swarmBias;
+    const gatherKick = (Math.random() < 0.35 ? swarmBias * -0.25 : swarmBias * 0.2);
+    bubble.style.setProperty("--x", `${swarmSpread}px`);
+    bubble.style.setProperty("--drift-a", `${Math.random()*18 - 9}px`);
+    bubble.style.setProperty("--drift-b", `${gatherKick + (Math.random()*24 - 12)}px`);
+    bubble.style.setProperty("--drift-c", `${Math.random()*34 - 17}px`);
 
-    const rise = Math.random() * 2.8 + 2.4;
-    bubble.style.animationDuration = `${rise}s`;
-    bubble.style.setProperty("--scale-end", (Math.random()*0.55 + 0.95).toFixed(2));
-    bubble.style.opacity = (Math.random()*0.4 + 0.58).toFixed(2);
+    const riseDistance = -(window.innerHeight + 120 + Math.random()*90);
+    bubble.style.setProperty("--rise", `${riseDistance}px`);
+
+    const baseRise = reducedMotion ? 8.4 : 7.2;
+    const rise = baseRise + Math.random()*3.2 + Math.random()*1.8;
+    bubble.style.animationDuration = `${rise.toFixed(2)}s`;
+
+    bubble.style.setProperty("--scale-end", (Math.random()*0.48 + 0.95).toFixed(2));
+    bubble.style.opacity = (Math.random()*0.35 + 0.56).toFixed(2);
 
     bubble.addEventListener("pointerdown", (e)=>{
         e.stopPropagation();
@@ -246,47 +396,63 @@ function createBubble(){
     });
 
     document.body.appendChild(bubble);
-    bubble.addEventListener("animationend", ()=>bubble.remove());
+    bubble.addEventListener("animationend", ()=>bubble.remove(), {once:true});
 }
 
-function burst(count = 14, withSound = true){
-    if(withSound) toneBeep({freq:520 + Math.random()*120, type:"triangle", decay:0.09, gain:0.09});
-    for(let i=0;i<count;i++){
-        setTimeout(createBubble, i*35);
-    }
+function burst(count = 10){
+    const cadence = reducedMotion ? 52 : 44;
+    for(let i=0;i<count;i++) setTimeout(createBubble, i*cadence + Math.random()*18);
 }
 
 function startHold(){
+    if(isHolding) return;
+    isHolding = true;
+    machine.classList.add("is-active");
     ensureAudioContext();
-    burst(15, true);
+    startBlowerLoop();
+    burst(13);
+
     if(holdTimer) return;
     holdTimer = setInterval(()=>{
-        burst(6, false);
-    }, 220);
+        burst(5);
+    }, reducedMotion ? 320 : 250 + Math.random()*40);
 }
 
 function stopHold(){
+    if(!isHolding && !holdTimer) return;
+    isHolding = false;
+    machine.classList.remove("is-active");
+    stopBlowerLoop();
     if(holdTimer){
         clearInterval(holdTimer);
         holdTimer = null;
     }
 }
 
-machine.addEventListener("pointerdown", startHold);
+machine.addEventListener("pointerdown", (e)=>{
+    e.preventDefault();
+    startHold();
+});
 machine.addEventListener("pointerup", stopHold);
 machine.addEventListener("pointercancel", stopHold);
 machine.addEventListener("pointerleave", stopHold);
+window.addEventListener("pointerup", stopHold);
 window.addEventListener("blur", stopHold);
+
+document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden) stopHold();
+});
+
+renderSkins();
 
 let auto = setInterval(()=>{
     createBubble();
-    if(autoIntervalMs < 1800){
-        autoIntervalMs += 80;
+    if(autoIntervalMs < 1750){
+        autoIntervalMs += 95;
         clearInterval(auto);
         auto = setInterval(createBubble, autoIntervalMs);
     }
 }, autoIntervalMs);
-
 </script>
 
 </body>

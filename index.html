@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>流光泡泡机</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    overflow:hidden;
+    width:100vw;
+    height:100vh;
+    background:
+    linear-gradient(to bottom,#dff3ff,#fef6ff);
+    font-family:sans-serif;
+    touch-action:manipulation;
+}
+
+.title{
+    text-align:center;
+    padding-top:25px;
+    font-size:24px;
+    color:#5b7db8;
+    font-weight:bold;
+}
+
+.machine{
+    position:fixed;
+    bottom:60px;
+    left:50%;
+    transform:translateX(-50%);
+    width:180px;
+    height:110px;
+    border-radius:30px;
+    background:
+    linear-gradient(145deg,#ff8db1,#ff6f91);
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    color:white;
+    font-size:18px;
+
+    box-shadow:
+    0 10px 30px rgba(255,120,170,.35);
+
+    user-select:none;
+}
+
+.nozzle{
+    position:absolute;
+    top:-15px;
+    left:50%;
+    transform:translateX(-50%);
+    width:36px;
+    height:25px;
+    background:#fff;
+    border-radius:10px;
+}
+
+.bubble{
+    position:fixed;
+    border-radius:50%;
+    pointer-events:none;
+
+    background:
+    radial-gradient(circle at 30% 30%,
+    rgba(255,255,255,.95),
+    rgba(173,216,230,.5),
+    rgba(255,182,193,.25),
+    rgba(221,160,221,.15));
+
+    backdrop-filter:blur(1px);
+
+    animation:floatUp linear forwards;
+
+    will-change:transform,opacity;
+}
+
+@keyframes floatUp{
+
+    0%{
+        transform:
+        translate(0,0)
+        scale(0.7);
+
+        opacity:0;
+    }
+
+    10%{
+        opacity:1;
+    }
+
+    100%{
+        transform:
+        translate(var(--x),-110vh)
+        scale(1.3);
+
+        opacity:0;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="title">
+    阳光流光泡泡机 🫧
+</div>
+
+<div class="machine" id="machine">
+    点击喷泡泡
+    <div class="nozzle"></div>
+</div>
+
+<script>
+
+const machine = document.getElementById("machine");
+
+function createBubble(){
+
+    const bubble = document.createElement("div");
+
+    const size = Math.random()*35 + 15;
+
+    bubble.className = "bubble";
+
+    bubble.style.width = size + "px";
+    bubble.style.height = size + "px";
+
+    // 泡泡机喷口位置
+    const startX = window.innerWidth/2;
+
+    bubble.style.left =
+        (startX + (Math.random()*80-40)) + "px";
+
+    bubble.style.bottom = "145px";
+
+    // 左右漂浮
+    bubble.style.setProperty(
+        "--x",
+        (Math.random()*200 - 100) + "px"
+    );
+
+    // 动画时长
+    bubble.style.animationDuration =
+        (Math.random()*3 + 3) + "s";
+
+    // 透明度随机
+    bubble.style.opacity =
+        Math.random()*0.5 + 0.5;
+
+    document.body.appendChild(bubble);
+
+    bubble.addEventListener("animationend",()=>{
+        bubble.remove();
+    });
+}
+
+// 自动生成
+let auto = setInterval(()=>{
+    createBubble();
+},500);
+
+// 点击爆发
+machine.addEventListener("pointerdown",()=>{
+
+    for(let i=0;i<15;i++){
+
+        setTimeout(()=>{
+            createBubble();
+        },i*40);
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>

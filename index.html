@@ -16,8 +16,7 @@ body{
     overflow:hidden;
     width:100vw;
     height:100vh;
-    background:
-    linear-gradient(to bottom,#dff3ff,#fef6ff);
+    background: linear-gradient(to bottom,#dff3ff,#fef6ff);
     font-family:sans-serif;
     touch-action:manipulation;
 }
@@ -38,19 +37,13 @@ body{
     width:180px;
     height:110px;
     border-radius:30px;
-    background:
-    linear-gradient(145deg,#ff8db1,#ff6f91);
-
+    background: linear-gradient(145deg,#ff8db1,#ff6f91);
     display:flex;
     align-items:center;
     justify-content:center;
-
     color:white;
     font-size:18px;
-
-    box-shadow:
-    0 10px 30px rgba(255,120,170,.35);
-
+    box-shadow: 0 10px 30px rgba(255,120,170,.35);
     user-select:none;
 }
 
@@ -68,41 +61,42 @@ body{
 .bubble{
     position:fixed;
     border-radius:50%;
-    pointer-events:none;
-
+    pointer-events:auto;
+    cursor:pointer;
     background:
-    radial-gradient(circle at 30% 30%,
-    rgba(255,255,255,.95),
-    rgba(173,216,230,.5),
-    rgba(255,182,193,.25),
-    rgba(221,160,221,.15));
-
+      radial-gradient(circle at 28% 26%, rgba(255,255,255,.98), rgba(255,255,255,.75) 14%, transparent 35%),
+      radial-gradient(circle at 50% 55%, hsla(var(--hue),92%,72%,.45), hsla(var(--hue),95%,66%,.2) 60%, rgba(255,255,255,.06) 80%);
+    box-shadow: inset -8px -12px 16px rgba(255,255,255,.14), inset 8px 8px 14px rgba(255,255,255,.28);
     backdrop-filter:blur(1px);
-
     animation:floatUp linear forwards;
-
     will-change:transform,opacity;
 }
 
+.particle{
+    position:fixed;
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    pointer-events:none;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.95), hsla(var(--hue),95%,72%,.7));
+    animation: splash .45s ease-out forwards;
+}
+
 @keyframes floatUp{
+    0%{ transform: translate(0,0) scale(0.7); opacity:0; }
+    10%{ opacity:1; }
+    100%{ transform: translate(var(--x),-110vh) scale(var(--scale-end)); opacity:0; }
+}
 
-    0%{
-        transform:
-        translate(0,0)
-        scale(0.7);
+@keyframes pop{
+    0%{ transform:scale(1); opacity:1; }
+    65%{ transform:scale(1.35); opacity:.45; }
+    100%{ transform:scale(.1); opacity:0; }
+}
 
-        opacity:0;
-    }
-
-    10%{
-        opacity:1;
-    }
-
-    100%{
-        transform:
-        translate(var(--x),-110vh)
-        scale(1.3);
-
+@keyframes splash{
+    to{
+        transform: translate(var(--tx), var(--ty)) scale(0.2);
         opacity:0;
     }
 }
@@ -112,76 +106,186 @@ body{
 
 <body>
 
-<div class="title">
-    阳光流光泡泡机 🫧
-</div>
+<div class="title">阳光流光泡泡机 🫧</div>
 
 <div class="machine" id="machine">
-    点击喷泡泡
+    长按连续喷泡泡
     <div class="nozzle"></div>
 </div>
 
 <script>
-
 const machine = document.getElementById("machine");
 
+let hueSeed = 180;
+let autoIntervalMs = 500;
+let holdTimer = null;
+let audioCtx = null;
+
+function ensureAudioContext(){
+    if(!audioCtx){
+        const ACtx = window.AudioContext || window.webkitAudioContext;
+        if(!ACtx) return null;
+        audioCtx = new ACtx();
+    }
+    if(audioCtx.state === "suspended"){
+        audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+}
+
+function toneBeep({freq=480, type="sine", attack=0.005, decay=0.08, gain=.12} = {}){
+    const ctx = ensureAudioContext();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+
+    amp.gain.setValueAtTime(0.0001, now);
+    amp.gain.exponentialRampToValueAtTime(gain, now + attack);
+    amp.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
+
+    osc.connect(amp).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + attack + decay + 0.02);
+}
+
+function noisePop(){
+    const ctx = ensureAudioContext();
+    if(!ctx) return;
+
+    const dur = 0.12;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++) data[i] = Math.random()*2 - 1;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 800;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 4200;
+
+    const amp = ctx.createGain();
+    const now = ctx.currentTime;
+    amp.gain.setValueAtTime(0.0001, now);
+    amp.gain.exponentialRampToValueAtTime(0.22, now + 0.01);
+    amp.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    noise.connect(hp).connect(lp).connect(amp).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + dur + 0.02);
+}
+
+function createSplash(x, y, hue){
+    for(let i=0;i<10;i++){
+        const p = document.createElement("div");
+        p.className = "particle";
+        p.style.left = `${x}px`;
+        p.style.top = `${y}px`;
+        p.style.setProperty("--hue", hue);
+
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * 40 + 18;
+        p.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
+        p.style.setProperty("--ty", `${Math.sin(angle) * distance}px`);
+
+        document.body.appendChild(p);
+        p.addEventListener("animationend", ()=>p.remove());
+    }
+}
+
+function popBubble(bubble){
+    if(!bubble || bubble.dataset.popping === "1") return;
+    bubble.dataset.popping = "1";
+
+    const rect = bubble.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const hue = bubble.style.getPropertyValue("--hue") || 190;
+
+    bubble.style.animation = "pop .22s ease-out forwards";
+    createSplash(x, y, hue);
+    noisePop();
+
+    bubble.addEventListener("animationend", ()=>bubble.remove(), {once:true});
+}
+
 function createBubble(){
-
     const bubble = document.createElement("div");
-
-    const size = Math.random()*35 + 15;
+    const size = Math.random()*44 + 12;
 
     bubble.className = "bubble";
-
     bubble.style.width = size + "px";
     bubble.style.height = size + "px";
 
-    // 泡泡机喷口位置
-    const startX = window.innerWidth/2;
+    hueSeed = (hueSeed + 7 + Math.random() * 10) % 360;
+    bubble.style.setProperty("--hue", Math.round(hueSeed));
 
-    bubble.style.left =
-        (startX + (Math.random()*80-40)) + "px";
-
+    const startX = window.innerWidth / 2;
+    bubble.style.left = (startX + (Math.random()*90 - 45)) + "px";
     bubble.style.bottom = "145px";
 
-    // 左右漂浮
-    bubble.style.setProperty(
-        "--x",
-        (Math.random()*200 - 100) + "px"
-    );
+    bubble.style.setProperty("--x", (Math.random()*240 - 120) + "px");
 
-    // 动画时长
-    bubble.style.animationDuration =
-        (Math.random()*3 + 3) + "s";
+    const rise = Math.random() * 2.8 + 2.4;
+    bubble.style.animationDuration = `${rise}s`;
+    bubble.style.setProperty("--scale-end", (Math.random()*0.55 + 0.95).toFixed(2));
+    bubble.style.opacity = (Math.random()*0.4 + 0.58).toFixed(2);
 
-    // 透明度随机
-    bubble.style.opacity =
-        Math.random()*0.5 + 0.5;
+    bubble.addEventListener("pointerdown", (e)=>{
+        e.stopPropagation();
+        popBubble(bubble);
+    });
 
     document.body.appendChild(bubble);
-
-    bubble.addEventListener("animationend",()=>{
-        bubble.remove();
-    });
+    bubble.addEventListener("animationend", ()=>bubble.remove());
 }
 
-// 自动生成
+function burst(count = 14, withSound = true){
+    if(withSound) toneBeep({freq:520 + Math.random()*120, type:"triangle", decay:0.09, gain:0.09});
+    for(let i=0;i<count;i++){
+        setTimeout(createBubble, i*35);
+    }
+}
+
+function startHold(){
+    ensureAudioContext();
+    burst(15, true);
+    if(holdTimer) return;
+    holdTimer = setInterval(()=>{
+        burst(6, false);
+    }, 220);
+}
+
+function stopHold(){
+    if(holdTimer){
+        clearInterval(holdTimer);
+        holdTimer = null;
+    }
+}
+
+machine.addEventListener("pointerdown", startHold);
+machine.addEventListener("pointerup", stopHold);
+machine.addEventListener("pointercancel", stopHold);
+machine.addEventListener("pointerleave", stopHold);
+window.addEventListener("blur", stopHold);
+
 let auto = setInterval(()=>{
     createBubble();
-},500);
-
-// 点击爆发
-machine.addEventListener("pointerdown",()=>{
-
-    for(let i=0;i<15;i++){
-
-        setTimeout(()=>{
-            createBubble();
-        },i*40);
-
+    if(autoIntervalMs < 1800){
+        autoIntervalMs += 80;
+        clearInterval(auto);
+        auto = setInterval(createBubble, autoIntervalMs);
     }
-
-});
+}, autoIntervalMs);
 
 </script>
 
